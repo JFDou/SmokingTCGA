@@ -1,0 +1,101 @@
+---
+title: "smoking"
+author: "John Dou"
+date: "August 14, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Install relevant packages
+
+```{r, eval=FALSE}
+devtools::install_github('BioinformaticsFMRP/TCGAbiolinks')
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("sva")
+BiocManager::install("minfi")
+BiocManager::install("limma")
+BiocManager::install("IlluminaHumanMethylation450kmanifest")
+BiocManager::install("IlluminaHumanMethylation450kanno.ilmn12.hg19")
+BiocManager::install("sva")
+BiocManager::install("bacon")
+BiocManager::install("BiocParallel")
+BiocManager::install("FGNet")
+
+install.packages("matrixStats")
+install.packages("MASS")
+install.packages("abind")
+install.packages("Hmisc")
+install.packages('VennDiagram')
+install.packages("qqman")
+
+```
+
+## Download TCGA data
+
+```{r, eval=FALSE}
+library(TCGAbiolinks)
+
+#where you want to save downloaded data from TCGA
+SAVE_HERE <- '/nfs/turbo/bakulski1/People/johndou/Smoking/tcga_data/'
+
+#where you want files for preprocessing steps
+PREPROCESS_HERE <- '/nfs/turbo/bakulski1/People/johndou/Smoking/preprocess/'
+
+setwd(SAVE_HERE)
+
+query <- GDCquery(project = "TCGA-LUAD",
+                  data.category = "Raw microarray data",
+                  data.type = "Raw intensities", 
+                  experimental.strategy = "Methylation array", 
+                  legacy = TRUE,
+                  file.type = ".idat",
+                  platform = "Illumina Human Methylation 450")
+
+#make file to map cases to idats
+match.file.cases <- getResults(query,cols=c("cases","file_name"))
+match.file.cases$Basename <- substr(match.file.cases$file_name,1,17)
+match.file.cases$bcr_patient_barcode <- substr(match.file.cases$cases,1,12)
+save(match.file.cases,file='match.file.cases.rda')
+
+#download idats, don't do this at home
+tryCatch(GDCdownload(query, method = "api",chunks.per.download = 20),
+         error = function(e) GDCdownload(query, method = "client"))
+
+for(file in dir(".",pattern = ".idat", recursive = T)){
+  TCGAbiolinks::move(file,basename(file))
+}
+
+
+### download clinical data 
+query <- GDCquery(project = "TCGA-LUAD", 
+                  data.category = "Clinical", 
+                  data.type = "Clinical data",
+                  legacy = TRUE,
+                  file.type='txt')
+clinical.biotab <- GDCprepare(query)
+cl.luad <- clinical.biotab$clinical_patient_luad
+cl.luad <- data.frame(cl.luad)
+cl.luad <- cl.luad[-c(1,2),]
+save(cl.luad,file='cl.luad.rda')
+
+
+### merge file names (basenames) and clinical data
+base <- match.file.cases[,c('cases','Basename','bcr_patient_barcode')]
+dim(base)
+#rows should be cut in half because no longer two entries sample for red/green
+base <- unique(base)
+dim(base)
+
+pd <- merge(base,cl.luad,by='bcr_patient_barcode',all.x=T,all.y=F)
+rownames(pd) <- pd$Basename
+dim(pd)
+saveRDS(pd,file=paste0(PREPROCESS_HERE,'pd.rds'))
+
+```
+
