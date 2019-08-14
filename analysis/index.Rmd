@@ -9,3 +9,5 @@ editor_options:
 ---
 
 Welcome to my research website.
+
+Click [this](smoking_luad.html) for code

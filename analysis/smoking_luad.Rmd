@@ -99,3 +99,67 @@ saveRDS(pd,file=paste0(PREPROCESS_HERE,'pd.rds'))
 
 ```
 
+## Loading in idats and preprocessing
+
+```{r, eval=FALSE}
+library(matrixStats)
+library(minfi)
+
+#base folder of where the idats are located
+IDAT_FOLDER_PATH <- "/nfs/turbo/bakulski1/People/johndou/Smoking/tcga_data/TCGA-LUAD"
+
+#where you want files involved in preprocessing steps saved
+PREPROCESS_HERE <- '/nfs/turbo/bakulski1/People/johndou/Smoking/preprocess/'
+
+#where cross reactive probe list from (Chen et al. 2013) is located
+CROSS_PATH <- "/nfs/turbo/bakulski1/People/johndou/Smoking/preprocess/48639-non-specific-probes-Illumina450k.csv"
+
+
+pd <- readRDS(paste0(PREPROCESS_HERE,'pd.rds'))
+setwd(IDAT_FOLDER_PATH)
+rgset <- read.metharray(pd$Basename, verbose=T)
+
+setwd(PREPROCESS_HERE)
+saveRDS(rgset,file="rgset.rds")
+
+#counts of starting sample numbers
+N1 <- nrow(pd)
+  
+#if already have rgset made, just load it
+#rgset <- readRDS(paste0(PREPROCESS_HERE,"rgset.rds"))
+    
+#### overall signal intensity
+rawMSet <- preprocessRaw(rgset)
+Meth<-getMeth(rawMSet)
+Unmeth<-getUnmeth(rawMSet)
+
+Meth[1:5,1:5]
+Unmeth[1:5,1:5]
+
+identical(pd$Basename,colnames(Meth))
+Meth <- Meth[,as.character(pd$Basename)]
+Unmeth <- Unmeth[,as.character(pd$Basename)]
+pd$MQC <- log2(colMedians(Meth))
+pd$UQC <- log2(colMedians(Unmeth))
+rm(Meth,Unmeth,rawMSet)
+
+pd$Array<-factor(pd$Array)
+myColors<-c("dodgerblue", "firebrick1", "seagreen3")
+palette(myColors)
+pdf("MvsUplot.pdf")
+  plot(pd$UQC, pd$MQC, main="M vs. U QC", pch=16, xlab="Log2 Median Unmethylated Intensity", ylab="Log2 Median Methylated Intensity", cex.lab=1.2, cex.main=2)
+  plot(pd$UQC, pd$MQC, col=as.factor(pd$Slide), main="M vs. U QC by Slide", pch=16, xlab="Log2 Median Unmethylated Intensity", ylab="Log2 Median Methylated Intensity", cex.lab=1.2, cex.main=2)
+  legend("topleft",levels(as.factor(pd$Slide)), fill=myColors)
+  palette(graphColors)
+  plot(pd$UQC, pd$MQC, col=pd$Array, main="M vs. U QC by Position", pch=16, xlab="Log2 Median Unmethylated Intensity", ylab="Log2 Median Methylated Intensity", cex.lab=1.2, cex.main=2)
+  legend("bottomright",levels(pd$Array), fill=graphColors)
+  palette(myColors)
+  plot(pd$UQC, pd$MQC, col=as.factor(pd$Sample_Group), main="M vs. U QC by Sample Type", pch=16, xlab="Log2 Median Unmethylated Intensity", ylab="Log2 Median Methylated Intensity", cex.lab=1.2, cex.main=2)
+  legend("topleft",levels(as.factor(pd$Sample_Group)), fill=myColors)
+dev.off()
+
+length(which(pd$UQC<11 | pd$MQC<11))
+#37
+saveRDS(pd,file="pd.rds")
+
+```
