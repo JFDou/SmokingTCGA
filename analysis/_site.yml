@@ -1,7 +1,7 @@
-name: "SmokingTCGA"
+name: SmokingTCGA
 output_dir: ../docs
 navbar:
-  title: "SmokingTCGA"
+  title: SmokingTCGA
   left:
   - text: Home
     href: index.html
@@ -9,6 +9,10 @@ navbar:
     href: about.html
   - text: License
     href: license.html
+  right:
+  - icon: fa-github
+    text: Source code
+    href: https://github.com/JFDou/SmokingTCGA
 output:
   workflowr::wflow_html:
     toc: yes
