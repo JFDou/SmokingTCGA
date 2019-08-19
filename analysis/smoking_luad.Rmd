@@ -99,7 +99,7 @@ saveRDS(pd,file=paste0(PREPROCESS_HERE,'pd.rds'))
 
 ```
 
-## Loading in idats and preprocessing
+## Loading in idats
 
 ```{r, eval=FALSE}
 library(matrixStats)
@@ -127,8 +127,12 @@ N1 <- nrow(pd)
   
 #if already have rgset made, just load it
 #rgset <- readRDS(paste0(PREPROCESS_HERE,"rgset.rds"))
-    
-#### overall signal intensity
+```
+
+
+## overall signal intensity
+
+```{r, eval=FALSE}
 rawMSet <- preprocessRaw(rgset)
 Meth<-getMeth(rawMSet)
 Unmeth<-getUnmeth(rawMSet)
@@ -162,4 +166,30 @@ length(which(pd$UQC<11 | pd$MQC<11))
 #37
 saveRDS(pd,file="pd.rds")
 
+```
+
+
+### Detection P 
+
+```{r, eval=FALSE}
+detP <- detectionP(rgset)
+dim(detP)
+detP[1:5, 1:5]
+saveRDS(detP,file="detection-P.rds")
+#detP <- readRDS("detection-P.rds")
+
+failedP <- detP>0.01
+per.samp<-colMeans(failedP) # Fraction of failed positions per sample
+summary(per.samp)
+per.probe<-rowMeans(failedP) # Fraction of failed samples per position
+summary(per.probe)
+(sample.fail.n <- sum(per.samp>0.01)) #How many samples had more than 1% of sites fail?
+#43
+(probe.fail.n <- sum(per.probe>0.10)) # How many positions failed in more than 10% of samples? 
+#4043
+
+probe.fail<-failedP[per.probe>0.10,]
+sample.fail<-per.samp[per.samp>0.01]
+
+rm(detP,failedP)
 ```
